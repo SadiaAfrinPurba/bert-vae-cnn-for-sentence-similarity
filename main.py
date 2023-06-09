@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch
 from torch.utils.data import DataLoader
 
-from app import models, optimizer
+from app import optimizer
 from app.datasets import tokenizer
 from app.datasets.wiki_dataset import WikiDataset
 from app.loss import calculate_vae_loss
@@ -12,10 +12,12 @@ from app.models import bert
 from app.models.cnn_encoder_decoder import CNNEncoder, CNNDecoder
 from app.models.vae import VAE
 
+torch.cuda.empty_cache()
+
 
 @dataclass
 class Config:
-    batch_size: int = 64
+    batch_size: int = 32
     num_epochs: int = 10
     learning_rate: float = 1e-3
     latent_dim: int = 32
