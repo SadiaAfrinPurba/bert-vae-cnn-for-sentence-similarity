@@ -30,7 +30,7 @@ class CNNDecoder(Decoder):
         super(CNNDecoder, self).__init__()
 
         self.fc = nn.Linear(64*128, (output_dim * 64) // 2)
-        self.unflatten = nn.Unflatten(1, (64, output_dim))
+        self.unflatten = nn.Unflatten(1, (64, output_dim // 2))
         self.deconv1 = nn.ConvTranspose1d(64, 32, kernel_size=3, padding=1)
         self.deconv2 = nn.ConvTranspose1d(32, output_dim, kernel_size=3, padding=1)
         self.relu = nn.ReLU()
@@ -38,6 +38,7 @@ class CNNDecoder(Decoder):
 
     def forward(self, x):
         # x -> (8192, 24576)
+        x = x.t()
         x = self.relu(self.fc(x))
         x = self.unflatten(x)
         x = self.relu(self.deconv1(x))
