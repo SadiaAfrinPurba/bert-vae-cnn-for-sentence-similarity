@@ -23,6 +23,8 @@ class Config:
     latent_dim: int = 32
     max_length: int = 128
     training_file_path: str = os.path.join("data", "wiki1m_for_simcse.txt")
+    is_taking_subset: bool = True
+    data_subset_size: int = 5000
 
 
 def start_training(config: Config):
@@ -35,7 +37,8 @@ def start_training(config: Config):
     input_dim = bert_model.config.hidden_size
 
     wiki_dataset = WikiDataset(file_path=config.training_file_path,
-                               tokenizer=bert_tokenizer, max_length=config.max_length)
+                               tokenizer=bert_tokenizer, max_length=config.max_length,
+                               is_taking_subset=config.is_taking_subset, data_subset_size=config.data_subset_size)
     data_loader = DataLoader(wiki_dataset, batch_size=config.batch_size, shuffle=True)
 
     encoder = CNNEncoder(input_dim=input_dim, latent_dim=config.latent_dim).to(device)
