@@ -11,8 +11,8 @@ class CNNEncoder(Encoder):
         self.conv1 = nn.Conv1d(input_dim, 32, kernel_size=3, padding=1) # {(128 - 3 +2)+1}
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, padding=1)
         self.flatten = nn.Flatten()
-        self.fc_mu = nn.Linear(64*128, 32) # 8192, 32 (latent)
-        self.fc_logvar = nn.Linear(64 * 128, 32)  # 8192, 32 (latent)
+        self.fc_mu = nn.Linear(64*128, latent_dim) # 8192, 32 (latent)
+        self.fc_logvar = nn.Linear(64 * 128, latent_dim)  # 8192, 32 (latent)
         self.relu = nn.ReLU()
 
     def forward(self, x):
@@ -31,7 +31,7 @@ class CNNEncoder(Encoder):
 class CNNDecoder(Decoder):
     def __init__(self, latent_dim, output_dim):
         super(CNNDecoder, self).__init__()
-        self.fc = nn.Linear(32, 64 * 128)
+        self.fc = nn.Linear(latent_dim, 64 * 128)
         self.unflatten = nn.Unflatten(1, (64, 128))
         self.deconv1 = nn.ConvTranspose1d(64, 32, kernel_size=3, padding=1)
         self.deconv2 = nn.ConvTranspose1d(32, output_dim, kernel_size=3, padding=1)
