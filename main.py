@@ -17,7 +17,7 @@ torch.cuda.empty_cache()
 
 @dataclass
 class Config:
-    batch_size: int = 32
+    batch_size: int = 64
     num_epochs: int = 10
     learning_rate: float = 1e-3
     latent_dim: int = 32
