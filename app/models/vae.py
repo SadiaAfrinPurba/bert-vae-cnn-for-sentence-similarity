@@ -20,10 +20,9 @@ class VAE(nn.Module):
 
     def forward(self, x):
         # x shape-> (64, 768, 128) -> (batch_size, embed_size, max_length)
-        mu, logvar = self.encoder(x) # -> output shape of mu and logvar (64,64)
-        # mu = mu_logvar[:, :self.latent_dim] # (8192, 32)
-        # logvar = mu_logvar[:, self.latent_dim:] # (8192, 49120)
-        # mu, logvar = torch.chunk(mu_logvar, 2, dim=1) # output shape of mu and logvar -> (64, 32)
+
+        mu, logvar = self.encoder(x) # -> output shape of mu and logvar (64,32)
         z = self.reparameterize(mu, logvar) # output shape of z -> (64, 32)
-        x_hat = self.decoder(z)
+        x_hat = self.decoder(z) # output shape of x_hat -> (64, 768, 128)
+
         return x_hat, mu, logvar

@@ -18,12 +18,11 @@ class CNNEncoder(Encoder):
     def forward(self, x):
         # x shape-> (64, 768, 128) -> (batch_size, embed_size, max_length)
 
-        x = self.relu(self.conv1(x)) # (64, 32, 128)
-        x = self.relu(self.conv2(x)) # (64, 64, 128)
-        x = self.flatten(x) # (64,8192) 64*128=8192
-        # x = x.t() # (8192, 64)
-        mu = self.fc_mu(x)
-        log_var = self.fc_logvar(x)
+        x = self.relu(self.conv1(x)) # x output shape -> (64, 32, 128)
+        x = self.relu(self.conv2(x)) # x output shape -> (64, 64, 128)
+        x = self.flatten(x) # x output shape -> (64, 8192) 64*128=8192
+        mu = self.fc_mu(x) # mu output shape -> (64, 32)
+        log_var = self.fc_logvar(x) # logvar output shape -> (64, 32)
 
         return mu, log_var
 
@@ -39,10 +38,9 @@ class CNNDecoder(Decoder):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # x -> (8192, 24576)
-        # x = x.t()
-        x = self.relu(self.fc(x))
-        x = self.unflatten(x)
-        x = self.relu(self.deconv1(x))
-        x = self.sigmoid(self.deconv2(x))
+        # x -> (64, 32)
+        x = self.relu(self.fc(x)) # x output shape -> (64, 8192)
+        x = self.unflatten(x) # x output shape -> (64, 64, 128)
+        x = self.relu(self.deconv1(x)) # x output shape -> (64, 32, 128)
+        x = self.sigmoid(self.deconv2(x)) # x output shape-> (64, 768, 128)
         return x
