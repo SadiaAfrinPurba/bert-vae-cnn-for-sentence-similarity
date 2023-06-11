@@ -52,6 +52,7 @@ def start_training(config: Config):
     for epoch in range(config.num_epochs):
         total_loss = 0.0
         total_similarity = 0.0
+        total_cosine_dist = 0.0
 
         for input_ids, attention_mask in data_loader:
             input_ids = input_ids.to(device)
@@ -67,18 +68,24 @@ def start_training(config: Config):
             x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
             x_hat, mu, logvar = vae(x)
 
+            # print(f"Generated Sentence: {bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)}")
+
             loss = calculate_vae_loss(x, x_hat, mu, logvar)
             similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
+            cosine_dist = 1 - similarity
 
             loss.backward()
             adam_optimizer.step()
 
             total_loss += loss.item()
             total_similarity += similarity.item()
+            total_cosine_dist += cosine_dist
 
         avg_loss = total_loss / num_batches
         avg_similarity = total_similarity / num_batches
-        print(f"Epoch {epoch + 1}/{config.num_epochs}, Loss: {avg_loss:.4f}, Similarity: {avg_similarity:.4f}")
+        avg_cosine_dist = total_cosine_dist / num_batches
+
+        print(f"Epoch {epoch + 1}/{config.num_epochs}, Avg Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Similarity: {avg_similarity:.2f}")
 
 
 if __name__ == '__main__':
