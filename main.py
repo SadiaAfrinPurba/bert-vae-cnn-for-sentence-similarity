@@ -85,7 +85,7 @@ def start_training(config: Config):
         avg_similarity = total_similarity / num_batches
         avg_cosine_dist = total_cosine_dist / num_batches
 
-        print(f"Epoch {epoch + 1}/{config.num_epochs}, Avg Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Similarity: {avg_similarity:.2f}")
+        print(f"Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Similarity: {avg_similarity:.2f}")
 
 
 if __name__ == '__main__':
