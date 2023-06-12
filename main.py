@@ -18,7 +18,7 @@ torch.cuda.empty_cache()
 @dataclass
 class Config:
     batch_size: int = 64
-    num_epochs: int = 10
+    num_epochs: int = 100
     learning_rate: float = 1e-3
     latent_dim: int = 32
     max_length: int = 128
@@ -120,12 +120,9 @@ def start_training(config: Config):
             original_sentence = bert_tokenizer.decode(x.argmax(dim=-1)[0], skip_special_tokens=True)
             generated_sentence = bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)
 
-            print(f"Original Sentence: {original_sentence}")
-            print(f"Generated Sentence: {generated_sentence}")
-
             loss = calculate_vae_loss(x, x_hat, mu, logvar)
             similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
-            similarity_info.append(similarity)
+            similarity_info.append(similarity.item())
             sentences_info.append([original_sentence, generated_sentence])
             cosine_dist = 1 - similarity
 
