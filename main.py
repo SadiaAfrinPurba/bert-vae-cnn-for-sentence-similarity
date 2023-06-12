@@ -59,7 +59,7 @@ def start_training(config: Config):
 
     adam_optimizer = optimizer.get_adam_optimizer(model=vae, lr=config.learning_rate)
     num_batches = len(data_loader) // config.batch_size
-    codes = dict(μ=list(), logσ2=list(), x=list())
+    codes = dict(μ=list(), logσ2=list(), similarity=list())
 
     print("==============Training Performance========================")
     for epoch in range(config.num_epochs):
