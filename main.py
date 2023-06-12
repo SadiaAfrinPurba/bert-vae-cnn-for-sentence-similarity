@@ -61,7 +61,7 @@ def start_training(config: Config):
     num_batches = len(data_loader) // config.batch_size
     codes = dict(μ=list(), logσ2=list(), similarity=list())
 
-    print("==============Training Performance========================")
+    print("\n==============Training Performance========================\n")
     for epoch in range(config.num_epochs):
         total_loss = 0.0
         total_similarity = 0.0
@@ -99,10 +99,10 @@ def start_training(config: Config):
         avg_cosine_dist = total_cosine_dist / num_batches
 
         print(
-            f"Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}")
+            f"====Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===")
 
     print(
-        "==============Evaluation Performance on 100 test data (never seen during training phase)========================")
+        "==============\nEvaluation Performance on 100 test data (never seen during training phase)========================\n")
     vae.eval()
     with torch.no_grad():
         total_loss = 0.0
@@ -156,32 +156,35 @@ def start_training(config: Config):
         codes['similarity'].append(torch.cat(similarities))
 
         print(
-            f"Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}")
+            f"\n[Test]=====Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===\n")
 
-        print("=============10 generated sentences with the highest cosine similarity=======")
+        print("\n=============10 generated sentences with the highest cosine similarity=======")
         print("=========format ('similarity score, [original sent, generated sent]')=======================")
-        for item in similarity_with_sentence_info[:10]:
-            print(item)
+        for index, item in enumerate(similarity_with_sentence_info[:10]):
+            similarity = item[0]
+            original_sent = item[1][0]
+            generated_sent = item[1][1]
 
-    print(f"==============Visualization of the trained vector space ======================")
-    # Referenec: https://github.com/Atcold/NYU-DLSP21/blob/master/11-VAE.ipynb
+            print(f"{index+1}) similarity: {similarity}\n original sentence: {original_sent} \n generated_sentence: {generated_sent}\n")
 
-    X, Y, E = list(), list(), list()  # input, classes, embeddings
-    N = 1000  # samples per epoch
-    epochs = (0, 5, 10)
-    for epoch in epochs:
-        Y.append(codes['μ'][epoch][:N])
-        E.append(TSNE(n_components=2).fit_transform(Y[-1].detach().cpu()))
-        X.append(codes['similarity'][epoch][:N])
-
-    f, a = plt.subplots(ncols=3)
-    s = None
-    for i, e in enumerate(epochs):
-        s = a[i].scatter(E[i][:, 0], E[i][:, 1], c=X[i], cmap='tab10')
-        a[i].grid(False)
-        a[i].set_title(f'Epoch {e}')
-        a[i].axis('equal')
-    f.colorbar(s, ax=a[:], ticks=np.arange(10), boundaries=np.arange(11) - .5)
+    # print(f"==============Visualization of the trained vector space ======================")
+    # # Referenec: https://github.com/Atcold/NYU-DLSP21/blob/master/11-VAE.ipynb
+    #
+    # X, Y, E = list(), list(), list()  # input, classes, embeddings
+    # N = 1000  # samples per epoch
+    # epochs = [0]
+    # for epoch in epochs:
+    #     Y.append(codes['μ'][epoch][:N])
+    #     E.append(TSNE(n_components=2).fit_transform(Y[-1].detach().cpu()))
+    #     X.append(codes['similarity'][epoch][:N])
+    #
+    # f, a = plt.subplots(ncols=len(epochs))
+    # for i, e in enumerate(epochs):
+    #     s = a[i].scatter(E[i][:, 0], E[i][:, 1], c=X[i], cmap='tab10')
+    #     a[i].grid(False)
+    #     a[i].set_title(f'Epoch {e}')
+    #     a[i].axis('equal')
+    #     f.colorbar(s, ax=a[:], ticks=np.arange(10), boundaries=np.arange(11) - .5)
 
 
 if __name__ == '__main__':
