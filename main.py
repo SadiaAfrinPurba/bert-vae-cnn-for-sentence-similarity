@@ -2,7 +2,10 @@ import os.path
 from dataclasses import dataclass
 
 import torch
+from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
+import numpy as np
+from sklearn.manifold import TSNE
 
 from app import optimizer
 from app.datasets import tokenizer
@@ -18,7 +21,7 @@ torch.cuda.empty_cache()
 @dataclass
 class Config:
     batch_size: int = 64
-    num_epochs: int = 100
+    num_epochs: int = 1
     learning_rate: float = 1e-3
     latent_dim: int = 32
     max_length: int = 128
@@ -43,7 +46,8 @@ def start_training(config: Config):
     test_size = len(wiki_dataset) - train_size
 
     generator = torch.Generator().manual_seed(42)
-    train_dataset, test_dataset = torch.utils.data.random_split(wiki_dataset, [train_size, test_size], generator=generator)
+    train_dataset, test_dataset = torch.utils.data.random_split(wiki_dataset, [train_size, test_size],
+                                                                generator=generator)
 
     data_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     test_data_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False)
@@ -55,6 +59,7 @@ def start_training(config: Config):
 
     adam_optimizer = optimizer.get_adam_optimizer(model=vae, lr=config.learning_rate)
     num_batches = len(data_loader) // config.batch_size
+    codes = dict(μ=list(), logσ2=list(), x=list())
 
     print("==============Training Performance========================")
     for epoch in range(config.num_epochs):
@@ -96,7 +101,8 @@ def start_training(config: Config):
         print(
             f"Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}")
 
-    print("==============Evaluation Performance on 100 test data (never seen during training phase)========================")
+    print(
+        "==============Evaluation Performance on 100 test data (never seen during training phase)========================")
     vae.eval()
     with torch.no_grad():
         total_loss = 0.0
@@ -104,7 +110,9 @@ def start_training(config: Config):
         total_cosine_dist = 0.0
         similarity_info = []
         sentences_info = []
+        similarities = []
 
+        means, logvars = list(), list()
         for input_ids, attention_mask in test_data_loader:
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
@@ -121,10 +129,16 @@ def start_training(config: Config):
             generated_sentence = bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)
 
             loss = calculate_vae_loss(x, x_hat, mu, logvar)
+
             similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
             similarity_info.append(similarity.item())
             sentences_info.append([original_sentence, generated_sentence])
+
             cosine_dist = 1 - similarity
+
+            means.append(mu.detach())
+            logvars.append(logvar.detach())
+            similarities.append(similarity.item())
 
             total_loss += loss.item()
             total_similarity += similarity.item()
@@ -137,6 +151,10 @@ def start_training(config: Config):
         similarity_with_sentence_info = list(zip(similarity_info, sentences_info))
         similarity_with_sentence_info.sort()
 
+        codes['μ'].append(torch.cat(means))
+        codes['logσ2'].append(torch.cat(logvars))
+        codes['similarity'].append(torch.cat(similarities))
+
         print(
             f"Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}")
 
@@ -144,6 +162,26 @@ def start_training(config: Config):
         print("=========format ('similarity score, [original sent, generated sent]')=======================")
         for item in similarity_with_sentence_info[:10]:
             print(item)
+
+    print(f"==============Visualization of the trained vector space ======================")
+    # Referenec: https://github.com/Atcold/NYU-DLSP21/blob/master/11-VAE.ipynb
+
+    X, Y, E = list(), list(), list()  # input, classes, embeddings
+    N = 1000  # samples per epoch
+    epochs = (0, 5, 10)
+    for epoch in epochs:
+        Y.append(codes['μ'][epoch][:N])
+        E.append(TSNE(n_components=2).fit_transform(Y[-1].detach().cpu()))
+        X.append(codes['similarity'][epoch][:N])
+
+    f, a = plt.subplots(ncols=3)
+    s = None
+    for i, e in enumerate(epochs):
+        s = a[i].scatter(E[i][:, 0], E[i][:, 1], c=X[i], cmap='tab10')
+        a[i].grid(False)
+        a[i].set_title(f'Epoch {e}')
+        a[i].axis('equal')
+    f.colorbar(s, ax=a[:], ticks=np.arange(10), boundaries=np.arange(11) - .5)
 
 
 if __name__ == '__main__':
