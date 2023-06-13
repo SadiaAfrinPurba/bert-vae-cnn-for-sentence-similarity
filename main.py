@@ -151,9 +151,9 @@ def start_training(config: Config):
         similarity_with_sentence_info = list(zip(similarity_info, sentences_info))
         similarity_with_sentence_info.sort()
 
-        codes['μ'].append(torch.cat(means))
-        codes['logσ2'].append(torch.cat(logvars))
-        codes['similarity'].append(torch.cat(similarities))
+        # codes['μ'].append(torch.cat(means))
+        # codes['logσ2'].append(torch.cat(logvars))
+        # codes['similarity'].append(torch.cat(similarities))
 
         print(
             f"\n[Test]=====Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===\n")
