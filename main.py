@@ -68,21 +68,24 @@ def start_training(config: Config):
         total_similarity = 0.0
         total_cosine_dist = 0.0
 
+        batch_count = 0
+
         for input_ids, attention_mask in data_loader:
+            batch_count += 1
             input_ids = input_ids.to(device)
             attention_mask = attention_mask.to(device)
 
             with torch.no_grad():
                 outputs = bert_model(input_ids, attention_mask=attention_mask)
                 bert_embeddings = outputs.last_hidden_state.squeeze(0)
-                visualize_raw_bert_embedding(bert_embedding=bert_embeddings, masks=attention_mask, epoch=epoch)
+                visualize_raw_bert_embedding(bert_embedding=bert_embeddings.cpu(), masks=attention_mask.cpu(), epoch=epoch, batch_no=batch_count)
                 bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
 
             adam_optimizer.zero_grad()
 
             x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
             x_hat, mu, logvar = vae(x)
-            visualize_raw_bert_embedding(bert_embedding=x_hat, masks=attention_mask, epoch=epoch, type="decoder_output")
+            visualize_raw_bert_embedding(bert_embedding=x_hat.detach().cpu(), masks=attention_mask.detach().cpu(), epoch=epoch, batch_no=batch_count, type="decoder_output")
 
             # print(f"Generated Sentence: {bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)}")
 
