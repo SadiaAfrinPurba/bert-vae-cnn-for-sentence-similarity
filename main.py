@@ -14,6 +14,7 @@ from app.loss import calculate_vae_loss
 from app.models import bert
 from app.models.cnn_encoder_decoder import CNNEncoder, CNNDecoder
 from app.models.vae import VAE
+from app.visualization import visualize_raw_bert_embedding
 
 torch.cuda.empty_cache()
 
@@ -74,12 +75,14 @@ def start_training(config: Config):
             with torch.no_grad():
                 outputs = bert_model(input_ids, attention_mask=attention_mask)
                 bert_embeddings = outputs.last_hidden_state.squeeze(0)
+                visualize_raw_bert_embedding(bert_embedding=bert_embeddings, masks=attention_mask, epoch=epoch)
                 bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
 
             adam_optimizer.zero_grad()
 
             x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
             x_hat, mu, logvar = vae(x)
+            visualize_raw_bert_embedding(bert_embedding=x_hat, masks=attention_mask, epoch=epoch, type="decoder_output")
 
             # print(f"Generated Sentence: {bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)}")
 
