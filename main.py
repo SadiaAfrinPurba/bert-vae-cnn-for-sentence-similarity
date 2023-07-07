@@ -78,6 +78,7 @@ def start_training(config: Config):
             with torch.no_grad():
                 outputs = bert_model(input_ids, attention_mask=attention_mask)
                 bert_embeddings = outputs.last_hidden_state.squeeze(0)
+                print(f"[Visualization] Epoch: {epoch + 1}, Batch No: {batch_count}, Number of inputs: {len(data_loader)}")
                 visualize_embedding(bert_embedding=bert_embeddings.cpu(), masks=attention_mask.cpu(), epoch=epoch, batch_no=batch_count)
                 bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
 
