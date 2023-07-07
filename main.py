@@ -22,13 +22,13 @@ torch.cuda.empty_cache()
 @dataclass
 class Config:
     batch_size: int = 64
-    num_epochs: int = 1
+    num_epochs: int = 10
     learning_rate: float = 1e-3
     latent_dim: int = 32
     max_length: int = 128
     training_file_path: str = os.path.join("data", "wiki1m_for_simcse.txt")
-    is_taking_subset: bool = False
-    data_subset_size: int = 5000
+    is_taking_subset: bool = True
+    data_subset_size: int = 4992
 
 
 def start_training(config: Config):
