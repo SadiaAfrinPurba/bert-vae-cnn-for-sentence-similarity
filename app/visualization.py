@@ -7,8 +7,8 @@ from sklearn.manifold import TSNE
 import seaborn as sns
 
 
-def visualize_embedding(bert_embedding, masks, epoch, batch_no, type="bert") -> None:
-    saved_path = os.path.join("plots", type, f"epoch-{str(epoch + 1)}")
+def visualize_embedding(bert_embedding, masks, epoch, batch_no, kl_coefficent, type="bert") -> None:
+    saved_path = os.path.join("plots", type, kl_coefficent, f"epoch-{str(epoch + 1)}")
     os.makedirs(saved_path, exist_ok=True)
     dim_reducer = TSNE(n_components=2, perplexity=10.0)
     layer_averaged_hidden_states = torch.div(bert_embedding.sum(dim=1), masks.sum(dim=1, keepdim=True))
@@ -21,8 +21,8 @@ def visualize_embedding(bert_embedding, masks, epoch, batch_no, type="bert") -> 
     plt.savefig(os.path.join(saved_path, f"batch-{str(batch_no)}.png"), format='png', pad_inches=0)
 
 
-def visualize_latent_vector_space(latent_vector_space, epoch, batch_count, type="latent_vector_space") -> None:
-    saved_path = os.path.join("plots", type, f"epoch-{str(epoch + 1)}")
+def visualize_latent_vector_space(latent_vector_space, epoch, batch_count, kl_coefficent, type="latent_vector_space") -> None:
+    saved_path = os.path.join("plots", type, kl_coefficent, f"epoch-{str(epoch + 1)}")
     os.makedirs(saved_path, exist_ok=True)
     dim_reducer = TSNE(n_components=2,  perplexity=10.0)
     latent_vector_space_reduced = dim_reducer.fit_transform(latent_vector_space.numpy())
