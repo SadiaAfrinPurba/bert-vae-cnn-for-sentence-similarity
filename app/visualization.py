@@ -8,7 +8,7 @@ import seaborn as sns
 
 
 def visualize_embedding(bert_embedding, masks, epoch, batch_no, kl_coefficent, type="bert") -> None:
-    saved_path = os.path.join("plots", type, kl_coefficent, f"epoch-{str(epoch + 1)}")
+    saved_path = os.path.join("plots", type, str(kl_coefficent), f"epoch-{str(epoch + 1)}")
     os.makedirs(saved_path, exist_ok=True)
     dim_reducer = TSNE(n_components=2, perplexity=10.0)
     layer_averaged_hidden_states = torch.div(bert_embedding.sum(dim=1), masks.sum(dim=1, keepdim=True))
@@ -22,7 +22,7 @@ def visualize_embedding(bert_embedding, masks, epoch, batch_no, kl_coefficent, t
 
 
 def visualize_latent_vector_space(latent_vector_space, epoch, batch_count, kl_coefficent, type="latent_vector_space") -> None:
-    saved_path = os.path.join("plots", type, kl_coefficent, f"epoch-{str(epoch + 1)}")
+    saved_path = os.path.join("plots", type, str(kl_coefficent), f"epoch-{str(epoch + 1)}")
     os.makedirs(saved_path, exist_ok=True)
     dim_reducer = TSNE(n_components=2,  perplexity=10.0)
     latent_vector_space_reduced = dim_reducer.fit_transform(latent_vector_space.numpy())
