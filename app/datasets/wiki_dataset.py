@@ -32,3 +32,4 @@ class WikiDataset(Dataset):
         input_ids = encoding['input_ids'].squeeze()
         attention_mask = encoding['attention_mask'].squeeze()
         return input_ids, attention_mask
+        
