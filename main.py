@@ -64,6 +64,7 @@ def start_training(config: Config):
 
     print("\n==============Training Performance========================\n")
     for kl_coefficient in [0, 0.02, 0.1, 0.5, 1, 2, 10, 20]:
+        print(f"=======Working for KL {kl_coefficient}========================")
         for epoch in range(config.num_epochs):
             total_loss = 0.0
             total_similarity = 0.0
