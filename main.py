@@ -21,8 +21,8 @@ torch.cuda.empty_cache()
 
 @dataclass
 class Config:
-    batch_size: int = 64
-    num_epochs: int = 10
+    batch_size: int = 4492
+    num_epochs: int = 2
     learning_rate: float = 1e-3
     latent_dim: int = 32
     max_length: int = 128
@@ -63,117 +63,118 @@ def start_training(config: Config):
     codes = dict(μ=list(), logσ2=list(), similarity=list())
 
     print("\n==============Training Performance========================\n")
-    for epoch in range(config.num_epochs):
-        total_loss = 0.0
-        total_similarity = 0.0
-        total_cosine_dist = 0.0
+    for kl_coefficient in [0, 0.02, 0.1, 0.5, 1, 2, 10, 20]:
+        for epoch in range(config.num_epochs):
+            total_loss = 0.0
+            total_similarity = 0.0
+            total_cosine_dist = 0.0
 
-        batch_count = 0
+            batch_count = 0
 
-        for input_ids, attention_mask in data_loader:
-            batch_count += 1
-            input_ids = input_ids.to(device)
-            attention_mask = attention_mask.to(device)
+            for input_ids, attention_mask in data_loader:
+                batch_count += 1
+                input_ids = input_ids.to(device)
+                attention_mask = attention_mask.to(device)
 
-            with torch.no_grad():
-                outputs = bert_model(input_ids, attention_mask=attention_mask)
-                bert_embeddings = outputs.last_hidden_state.squeeze(0)
-                print(f"[Visualization] Epoch: {epoch + 1}, Batch No: {batch_count}, Number of inputs: {len(data_loader)}")
-                visualize_embedding(bert_embedding=bert_embeddings.cpu(), masks=attention_mask.cpu(), epoch=epoch, batch_no=batch_count)
-                bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
+                with torch.no_grad():
+                    outputs = bert_model(input_ids, attention_mask=attention_mask)
+                    bert_embeddings = outputs.last_hidden_state.squeeze(0)
+                    print(f"[Visualization] Epoch: {epoch + 1}, Batch No: {batch_count}, Number of inputs: {len(data_loader)}")
+                    visualize_embedding(bert_embedding=bert_embeddings.cpu(), masks=attention_mask.cpu(), epoch=epoch, batch_no=batch_count, kl_coefficient=kl_coefficient)
+                    bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
 
-            adam_optimizer.zero_grad()
+                adam_optimizer.zero_grad()
 
-            x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
-            x_hat, mu, logvar, z = vae(x)
-            visualize_embedding(bert_embedding=x_hat.detach().cpu(), masks=attention_mask.detach().cpu(), epoch=epoch, batch_no=batch_count, type="decoder_output")
-            visualize_latent_vector_space(latent_vector_space=z.detach().cpu(), epoch=epoch, batch_count=batch_count)
+                x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
+                x_hat, mu, logvar, z = vae(x)
+                visualize_embedding(bert_embedding=x_hat.detach().cpu(), masks=attention_mask.detach().cpu(), epoch=epoch, batch_no=batch_count, kl_coefficient=kl_coefficient, type="decoder_output")
+                visualize_latent_vector_space(latent_vector_space=z.detach().cpu(), epoch=epoch, batch_count=batch_count, kl_coefficient=kl_coefficient)
 
-            # print(f"Generated Sentence: {bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)}")
+                # print(f"Generated Sentence: {bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)}")
 
-            loss = calculate_vae_loss(x, x_hat, mu, logvar)
-            similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
-            cosine_dist = 1 - similarity
+                loss = calculate_vae_loss(x, x_hat, mu, logvar, kl_coefficient)
+                similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
+                cosine_dist = 1 - similarity
 
-            loss.backward()
-            adam_optimizer.step()
+                loss.backward()
+                adam_optimizer.step()
 
-            total_loss += loss.item()
-            total_similarity += similarity.item()
-            total_cosine_dist += cosine_dist
+                total_loss += loss.item()
+                total_similarity += similarity.item()
+                total_cosine_dist += cosine_dist
 
-        avg_loss = total_loss / num_batches
-        avg_similarity = total_similarity / num_batches
-        avg_cosine_dist = total_cosine_dist / num_batches
+            avg_loss = total_loss / num_batches
+            avg_similarity = total_similarity / num_batches
+            avg_cosine_dist = total_cosine_dist / num_batches
 
-        print(
-            f"====Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===")
-
-    print(
-        "==============\nEvaluation Performance on 100 test data (never seen during training phase)========================\n")
-    vae.eval()
-    with torch.no_grad():
-        total_loss = 0.0
-        total_similarity = 0.0
-        total_cosine_dist = 0.0
-        similarity_info = []
-        sentences_info = []
-        similarities = []
-
-        means, logvars = list(), list()
-        for input_ids, attention_mask in test_data_loader:
-            input_ids = input_ids.to(device)
-            attention_mask = attention_mask.to(device)
-
-            with torch.no_grad():
-                outputs = bert_model(input_ids, attention_mask=attention_mask)
-                bert_embeddings = outputs.last_hidden_state.squeeze(0)
-                bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
-
-            x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
-            x_hat, mu, logvar, z = vae(x)
-
-            original_sentence = bert_tokenizer.decode(x.argmax(dim=-1)[0], skip_special_tokens=True)
-            generated_sentence = bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)
-
-            loss = calculate_vae_loss(x, x_hat, mu, logvar)
-
-            similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
-            similarity_info.append(similarity.item())
-            sentences_info.append([original_sentence, generated_sentence])
-
-            cosine_dist = 1 - similarity
-
-            means.append(mu.detach())
-            logvars.append(logvar.detach())
-            similarities.append(similarity.item())
-
-            total_loss += loss.item()
-            total_similarity += similarity.item()
-            total_cosine_dist += cosine_dist
-
-        avg_loss = total_loss / num_batches
-        avg_similarity = total_similarity / num_batches
-        avg_cosine_dist = total_cosine_dist / num_batches
-
-        similarity_with_sentence_info = list(zip(similarity_info, sentences_info))
-        similarity_with_sentence_info.sort()
-
-        # codes['μ'].append(torch.cat(means))
-        # codes['logσ2'].append(torch.cat(logvars))
-        # codes['similarity'].append(torch.cat(similarities))
+            print(
+                f"====Epoch {epoch + 1}/{config.num_epochs}, Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===")
 
         print(
-            f"\n[Test]=====Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===\n")
+            "==============\nEvaluation Performance on 100 test data (never seen during training phase)========================\n")
+        vae.eval()
+        with torch.no_grad():
+            total_loss = 0.0
+            total_similarity = 0.0
+            total_cosine_dist = 0.0
+            similarity_info = []
+            sentences_info = []
+            similarities = []
 
-        print("\n=============10 generated sentences with the highest cosine similarity=======")
-        print("=========format ('similarity score, [original sent, generated sent]')=======================")
-        for index, item in enumerate(similarity_with_sentence_info[:10]):
-            similarity = item[0]
-            original_sent = item[1][0]
-            generated_sent = item[1][1]
+            means, logvars = list(), list()
+            for input_ids, attention_mask in test_data_loader:
+                input_ids = input_ids.to(device)
+                attention_mask = attention_mask.to(device)
 
-            print(f"{index+1}) similarity: {similarity}\n original sentence: {original_sent} \n generated_sentence: {generated_sent}\n")
+                with torch.no_grad():
+                    outputs = bert_model(input_ids, attention_mask=attention_mask)
+                    bert_embeddings = outputs.last_hidden_state.squeeze(0)
+                    bert_embeddings = bert_embeddings.to(device)  # Shape (64, 128, 768) (batch, max_length, embed_dim)
+
+                x = bert_embeddings.permute(0, 2, 1)  # Reshape to (batch_size, embedding_dim, sequence_length)
+                x_hat, mu, logvar, z = vae(x)
+
+                original_sentence = bert_tokenizer.decode(x.argmax(dim=-1)[0], skip_special_tokens=True)
+                generated_sentence = bert_tokenizer.decode(x_hat.argmax(dim=-1)[0], skip_special_tokens=True)
+
+                loss = calculate_vae_loss(x, x_hat, mu, logvar, kl_coefficient)
+
+                similarity = torch.cosine_similarity(x_hat, x, dim=2).mean()
+                similarity_info.append(similarity.item())
+                sentences_info.append([original_sentence, generated_sentence])
+
+                cosine_dist = 1 - similarity
+
+                means.append(mu.detach())
+                logvars.append(logvar.detach())
+                similarities.append(similarity.item())
+
+                total_loss += loss.item()
+                total_similarity += similarity.item()
+                total_cosine_dist += cosine_dist
+
+            avg_loss = total_loss / num_batches
+            avg_similarity = total_similarity / num_batches
+            avg_cosine_dist = total_cosine_dist / num_batches
+
+            similarity_with_sentence_info = list(zip(similarity_info, sentences_info))
+            similarity_with_sentence_info.sort()
+
+            # codes['μ'].append(torch.cat(means))
+            # codes['logσ2'].append(torch.cat(logvars))
+            # codes['similarity'].append(torch.cat(similarities))
+
+            print(
+                f"\n[Test]=====Avg VAE_CNN Loss: {avg_loss:.2f}, Avg Cosine Distance: {avg_cosine_dist:.2f}, Avg Cosine Similarity: {avg_similarity:.2f}===\n")
+
+            print("\n=============10 generated sentences with the highest cosine similarity=======")
+            print("=========format ('similarity score, [original sent, generated sent]')=======================")
+            for index, item in enumerate(similarity_with_sentence_info[:10]):
+                similarity = item[0]
+                original_sent = item[1][0]
+                generated_sent = item[1][1]
+
+                print(f"{index+1}) similarity: {similarity}\n original sentence: {original_sent} \n generated_sentence: {generated_sent}\n")
 
     # print(f"==============Visualization of the trained vector space ======================")
     # # Referenec: https://github.com/Atcold/NYU-DLSP21/blob/master/11-VAE.ipynb
