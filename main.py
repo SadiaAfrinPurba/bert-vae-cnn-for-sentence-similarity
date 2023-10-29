@@ -21,7 +21,7 @@ torch.cuda.empty_cache()
 
 @dataclass
 class Config:
-    batch_size: int = 4492
+    batch_size: int = 64
     num_epochs: int = 2
     learning_rate: float = 1e-3
     latent_dim: int = 32
@@ -45,13 +45,14 @@ def start_training(config: Config):
                                is_taking_subset=config.is_taking_subset, data_subset_size=config.data_subset_size)
     train_size = int(0.9 * len(wiki_dataset))
     test_size = len(wiki_dataset) - train_size
-
+    torch.manual_seed(42)
+    torch.backends.cudnn.deterministic = True
     generator = torch.Generator().manual_seed(42)
     train_dataset, test_dataset = torch.utils.data.random_split(wiki_dataset, [train_size, test_size],
                                                                 generator=generator)
 
-    data_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
-    test_data_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False)
+    data_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True,drop_last=True, num_workers=0, pin_memory=True)
+    test_data_loader = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False, drop_last=True,num_workers=0, pin_memory=True)
 
     encoder = CNNEncoder(input_dim=input_dim, latent_dim=config.latent_dim).to(device)
     decoder = CNNDecoder(latent_dim=config.latent_dim, output_dim=input_dim).to(device)
@@ -59,11 +60,11 @@ def start_training(config: Config):
     vae = vae.to(device)
 
     adam_optimizer = optimizer.get_adam_optimizer(model=vae, lr=config.learning_rate)
-    num_batches = len(data_loader) // config.batch_size
+    num_batches = config.batch_size
     codes = dict(μ=list(), logσ2=list(), similarity=list())
 
     print("\n==============Training Performance========================\n")
-    for kl_coefficient in [0, 0.02, 0.1, 0.5, 1, 2, 10, 20]:
+    for kl_coefficient in [0.02, 0.1, 0.5, 1, 2, 10, 20]:
         print(f"=======Working for KL {kl_coefficient}========================")
         for epoch in range(config.num_epochs):
             total_loss = 0.0
